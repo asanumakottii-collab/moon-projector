@@ -211,16 +211,20 @@ def geometry_summary(args, axis, levels, radii, source_info) -> dict:
     }
 
 
-def write_svg(path, size, axis, levels, radii, summary):
+def write_svg(path, size, axis, levels, radii, summary, dot_gray=1):
+    dot_color = "#ffffff" if dot_gray else "#000000"
+    background_color = "#000000" if dot_gray else "#ffffff"
     with path.open("w", encoding="utf-8", newline="\n") as out:
         out.write('<?xml version="1.0" encoding="UTF-8"?>\n')
         out.write(f'<svg xmlns="http://www.w3.org/2000/svg" width="{number(size)}mm" '
                   f'height="{number(size)}mm" viewBox="0 0 {number(size)} {number(size)}">\n')
-        out.write('<title>Moon etching mask - white apertures on black retained material</title>\n')
+        title = ("Moon etching mask - white apertures on black retained material" if dot_gray
+                 else "Moon dot pattern - black dots on white background")
+        out.write(f'<title>{title}</title>\n')
         out.write('<metadata>'+escape(json.dumps(summary, ensure_ascii=False))+'</metadata>\n')
         out.write(f'<rect id="retained-material" x="0" y="0" width="{number(size)}" '
-                  f'height="{number(size)}" fill="#000000"/>\n')
-        out.write('<g id="apertures" fill="#ffffff" stroke="none">\n')
+                  f'height="{number(size)}" fill="{background_color}"/>\n')
+        out.write(f'<g id="apertures" fill="{dot_color}" stroke="none">\n')
         radius_text = [number(r) for r in radii]
         axis_text = [number(v) for v in axis]
         for row_index, row in enumerate(levels):
@@ -234,23 +238,24 @@ def write_svg(path, size, axis, levels, radii, summary):
             dst.write(chunk)
 
 
-def write_pdf(path, size, axis, levels, radii, summary):
+def write_pdf(path, size, axis, levels, radii, summary, dot_gray=1):
     canvas = Canvas(str(path), pagesize=(size*mm, size*mm), pageCompression=1, invariant=1)
     canvas.setTitle(f'Moon - diameter {number(summary["moon_diameter_mm"])} mm - pitch {number(summary["pitch_mm"])} mm')
     canvas.setAuthor("Tsukitou")
-    canvas.setSubject("White = apertures; black = retained material. Print at actual size / 100%.")
+    canvas.setSubject(("White apertures on black background. " if dot_gray
+                       else "Black dots on white background. ") + "Print at actual size / 100%.")
     # Reusing vector circle forms keeps a million-aperture PDF reasonably small.
     for level in sorted(int(k) for k in summary["hole_count_by_type"]):
         r = float(radii[level])
         canvas.beginForm(f"h{level}", -r, -r, r, r)
-        canvas.setFillGray(1)
+        canvas.setFillGray(dot_gray)
         canvas.circle(0, 0, r, stroke=0, fill=1)
         canvas.endForm()
     canvas.saveState()
     canvas.scale(mm, mm)
     canvas.translate(0, size)
     canvas.scale(1, -1)
-    canvas.setFillGray(0)
+    canvas.setFillGray(1-dot_gray)
     canvas.rect(0, 0, size, size, stroke=0, fill=1)
     prev_x = prev_y = 0.0
     for row_index, row in enumerate(levels):
@@ -265,14 +270,14 @@ def write_pdf(path, size, axis, levels, radii, summary):
     canvas.save()
 
 
-def write_detail_pdf(path, axis, levels, radii, crop):
+def write_detail_pdf(path, axis, levels, radii, crop, dot_gray=1):
     """Temporary QA page: exactly the same circles from a 2 mm square crop."""
     x0, y0, size = crop
     c = Canvas(str(path), pagesize=(size*mm, size*mm), pageCompression=1, invariant=1)
     c.scale(mm, mm)
-    c.setFillGray(0)
+    c.setFillGray(1-dot_gray)
     c.rect(0, 0, size, size, fill=1, stroke=0)
-    c.setFillGray(1)
+    c.setFillGray(dot_gray)
     rmax = float(radii.max())
     for iy in np.flatnonzero((axis >= y0-rmax) & (axis <= y0+size+rmax)):
         for ix in np.flatnonzero((axis >= x0-rmax) & (axis <= x0+size+rmax) & (levels[iy] > 0)):

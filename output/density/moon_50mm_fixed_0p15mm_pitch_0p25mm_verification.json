@@ -1,0 +1,24 @@
+{
+  "passed": true,
+  "source_unchanged": true,
+  "svgz_matches_svg": true,
+  "svg_pdf_hole_count": 14667,
+  "svg_physical_size_mm": [
+    54.0,
+    54.0
+  ],
+  "pdf_physical_size_mm": [
+    54.00001194444444,
+    54.00001194444444
+  ],
+  "all_centers_on_requested_grid": true,
+  "no_duplicate_centers": true,
+  "no_overlapping_holes": true,
+  "all_holes_within_moon": true,
+  "all_diameters_within_requested_limits": true,
+  "max_svg_pdf_center_difference_mm": 0.0,
+  "max_svg_pdf_radius_difference_mm": 0.0,
+  "pdf_vector_circle_types": 1,
+  "pdf_contains_only_vector_forms": true,
+  "unique_dot_diameters": 1
+}

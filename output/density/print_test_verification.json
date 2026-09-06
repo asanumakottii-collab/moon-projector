@@ -1,0 +1,24 @@
+{
+  "passed": true,
+  "a4_size_mm": [
+    210.00000333333335,
+    297.0000127777778
+  ],
+  "moon_patterns": [
+    {
+      "stem": "moon_50mm_fixed_0p15mm_pitch_0p25mm",
+      "count": 14667,
+      "same_as_standalone_svg": true,
+      "scale": 1.0
+    },
+    {
+      "stem": "moon_50mm_fixed_0p2mm_pitch_0p35mm",
+      "count": 7461,
+      "same_as_standalone_svg": true,
+      "scale": 1.0
+    }
+  ],
+  "calibration_line_mm": 50.0,
+  "all_dots_black": true,
+  "print_scale": 1.0
+}

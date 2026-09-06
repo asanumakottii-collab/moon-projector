@@ -18,6 +18,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--stem", type=Path,
                         default=Path(__file__).resolve().parent / "output/moon_50mm_pitch_0p1mm")
+    parser.add_argument("--pdf", type=Path, help="Optional PDF path for a rendering intermediate")
     args = parser.parse_args()
     stem = args.stem
     spec = json.loads(Path(str(stem)+"_spec.json").read_text())
@@ -33,7 +34,9 @@ def main():
     assert list(map(float, root.attrib["viewBox"].split())) == [0, 0, width, height]
     assert not root.findall(".//"+ns+"image") and not root.findall(".//"+ns+"filter")
     group = root.find(ns+"g")
-    assert group.attrib["fill"] == "#ffffff" and group.attrib["stroke"] == "none"
+    dot_color = spec.get("dot_color", "#ffffff")
+    assert group.attrib["fill"] == dot_color and group.attrib["stroke"] == "none"
+    assert root.find(ns+"rect").attrib["fill"] == spec.get("background_color", "#000000")
     circles = list(group)
     assert all(c.tag == ns+"circle" for c in circles)
     geometry = np.array([[float(c.attrib[k]) for k in ["cx", "cy", "r"]] for c in circles])
@@ -47,7 +50,10 @@ def main():
     radii = geometry[:, 2]
     assert radii.min()*2 >= spec["requested_min_hole_diameter_mm"]-1e-9
     assert radii.max()*2 <= spec["requested_max_hole_diameter_mm"]+1e-9
-    center = spec["black_border_mm"] + spec["moon_diameter_mm"]/2
+    if "dot_diameter_mm" in spec:
+        assert len(np.unique(radii)) == 1
+        assert abs(2*radii[0]-spec["dot_diameter_mm"]) < 1e-9
+    center = spec.get("border_mm", spec.get("black_border_mm")) + spec["moon_diameter_mm"]/2
     extent = np.hypot(geometry[:, 0]-center, geometry[:, 1]-center) + radii
     assert extent.max() <= spec["moon_diameter_mm"]/2 + 1e-8
     # The diameter ceiling is below the nearest possible lattice distance.
@@ -55,7 +61,7 @@ def main():
     actual_area = float(np.sum(np.pi*radii**2))
     assert abs(actual_area-spec["total_open_area_mm2"]) < 1e-7
 
-    reader = PdfReader(stem.with_suffix(".pdf"))
+    reader = PdfReader(args.pdf or stem.with_suffix(".pdf"))
     assert len(reader.pages) == 1
     page = reader.pages[0]
     page_mm = np.array([float(page.mediabox.width), float(page.mediabox.height)])*25.4/72
@@ -69,7 +75,8 @@ def main():
         r = bounds[2]
         assert np.allclose(bounds, [-r, -r, r, r], rtol=0, atol=1e-9)
         commands = form.get_data().decode("ascii")
-        assert "1 g" in commands and commands.count(" c\n") == 4
+        expected_gray = "1 g" if dot_color == "#ffffff" else "0 g"
+        assert expected_gray in commands and commands.count(" c\n") == 4
         radius_by_form[key] = r
 
     stream = page.get_contents().get_data().decode("ascii")
@@ -110,6 +117,7 @@ def main():
         "max_svg_pdf_radius_difference_mm": max_radius_error,
         "pdf_vector_circle_types": len(radius_by_form),
         "pdf_contains_only_vector_forms": True,
+        "unique_dot_diameters": len(np.unique(radii)),
     }
     Path(str(stem)+"_verification.json").write_text(json.dumps(result, indent=2)+"\n")
     print(json.dumps(result, indent=2))
